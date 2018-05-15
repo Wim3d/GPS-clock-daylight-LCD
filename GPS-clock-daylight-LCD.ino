@@ -29,10 +29,8 @@ void setup() {
   lcd.setCursor(0, 1);
   lcd.print("GPS fix");
   GPS_serial.begin(9600); //This opens up communications to the GPS
-
   smartDelay(1000);
-
-  while (gps.satellites.value() == 0)
+  while (gps.satellites.value() == 0) // wait for a GPS fix to know the UTC time
   {
     smartDelay(1000);
   }
@@ -40,19 +38,22 @@ void setup() {
 
 void loop()
 {
-  smartDelay(1000);
   int Year = gps.date.year();
   byte Month = gps.date.month();
   byte Day = gps.date.day();
   byte Hour = gps.time.hour();
   byte Minute = gps.time.minute();
   byte Second = gps.time.second();
-  setTime(Hour, Minute, Second, Day, Month, Year);
   // Set Time from GPS data string
-  utc = now();
+  setTime(Hour, Minute, Second, Day, Month, Year);  // set the time of the microcontroller to the UTC time from the GPS
 
-  TimeChangeRule CEST = {"CEST", Last, Sun, Mar, 2, 120};     //Central European Time (Frankfurt, Paris) *Sun, 2*
-  TimeChangeRule CET = {"CET ", Last, Sun, Oct, 3, 60};       //Central European Time (Frankfurt, Paris)
+  utc = now();  // read the time in the correct format to change via the TimeChangeRules
+
+  // Change these two rules corresponding to your timezone, see https://github.com/JChristensen/Timezone
+  //Central European Time (Frankfurt, Paris)  120 = 2 hours in daylight saving time (summer).
+  TimeChangeRule CEST = {"CEST", Last, Sun, Mar, 2, 120};
+  //Central European Time (Frankfurt, Paris)  60  = 1 hour in normal time (winter)
+  TimeChangeRule CET = {"CET ", Last, Sun, Oct, 3, 60};
   Timezone CE(CEST, CET);
   local = CE.toLocal(utc);
 
@@ -60,11 +61,11 @@ void loop()
   lcd.setCursor(0, 0); //Start at character 0 on line 0
   lcd.print("S:");
   lcd.setCursor(2, 0);
-  lcd.print(gps.satellites.value());
+  lcd.print(gps.satellites.value());  // display the number of satellites
   lcd.setCursor(4, 0); //Start at character 0 on line 1
   lcd.print("UTC:");
   lcd.setCursor(8, 0);
-  //lcd.print(gps.time.value());
+  // display UTC time from the GPS
   if (hour(utc) < 10) // add a zero if minute is under 10
     lcd.print("0");
   lcd.print(hour(utc));
@@ -77,6 +78,7 @@ void loop()
     lcd.print("0");
   lcd.print(second(utc));
 
+  // display the local time
   lcd.setCursor(0, 1); //Start at character 0 on line 0
   lcd.print("Local:");
   lcd.setCursor(8, 1);
@@ -92,6 +94,7 @@ void loop()
   if (second(local) < 10) // add a zero if minute is under 10
     lcd.print("0");
   lcd.print(second(local));
+  smartDelay(1000);     // display the time every second
 }
 
 
@@ -106,5 +109,5 @@ static void smartDelay(unsigned long ms)
     // tinyGPS.encode(char) continues to "load" the tinGPS object with new
     // data coming in from the GPS module. As full NMEA strings begin to come in
     // the tinyGPS library will be able to start parsing them for pertinent info
-  } while (millis() - start < ms);
+   } while (millis() - start < ms);
 }
