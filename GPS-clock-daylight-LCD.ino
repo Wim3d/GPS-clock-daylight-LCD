@@ -5,19 +5,28 @@
 
 #include <Timezone.h>
 #include "TinyGPS++.h"
-#include "SoftwareSerial.h"
+#include "AltSoftSerial.h"
 #include <LiquidCrystal_I2C.h>
 
 LiquidCrystal_I2C lcd(0x3F, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);  // Set the LCD I2C address
 
 //define serial connection for GPS
-SoftwareSerial GPS_serial(4, 3);  // RX (to TX op GPS) , TX (to RX of GPS)
+AltSoftSerial GPS_serial;  // RX = 8 (to TX op GPS) , TX = 9 (to RX of GPS) PWM 10 is not available
 
 //define GPS variable
 TinyGPSPlus gps;
 
+// Change these two rules corresponding to your timezone, see https://github.com/JChristensen/Timezone
+//Central European Time (Frankfurt, Paris)  120 = 2 hours in daylight saving time (summer).
+TimeChangeRule CEST = {"CEST", Last, Sun, Mar, 2, 120};
+//Central European Time (Frankfurt, Paris)  60  = 1 hour in normal time (winter)
+TimeChangeRule CET = {"CET ", Last, Sun, Oct, 3, 60};
+Timezone CE(CEST, CET);
+
 // time variables
-time_t local, utc;
+time_t local, utc, prev_set;
+boolean timenotset = true;
+int timesetinterval = 60; //set microcontroller time every 60 seconds
 
 void setup() {
   lcd.begin(16, 2);  // initialize the lcd for 16 chars 2 lines, turn on backlight
@@ -38,6 +47,38 @@ void setup() {
 
 void loop()
 {
+  if (now() - prev_set > timesetinterval || timenotset)
+  {
+    setthetime();
+    prev_set = now();
+    timenotset = false;
+    lcd.clear();
+    lcd.setCursor(0, 0); //Start at character 0 on line 0
+    lcd.print("time is set");
+    delay(1000);
+  }
+  utc = now();  // read the time in the correct format to change via the TimeChangeRules
+  local = CE.toLocal(utc);
+  displaythetime();
+  smartDelay(1000);     // update the time every second
+}
+
+static void smartDelay(unsigned long ms)
+{
+  unsigned long start = millis();
+  do
+  {
+    // If data has come in from the GPS module
+    while (GPS_serial.available())
+      gps.encode(GPS_serial.read()); // Send it to the encode function
+    // tinyGPS.encode(char) continues to "load" the tinGPS object with new
+    // data coming in from the GPS module. As full NMEA strings begin to come in
+    // the tinyGPS library will be able to start parsing them for pertinent info
+  } while (millis() - start < ms);
+}
+
+void setthetime(void)
+{
   int Year = gps.date.year();
   byte Month = gps.date.month();
   byte Day = gps.date.day();
@@ -46,17 +87,10 @@ void loop()
   byte Second = gps.time.second();
   // Set Time from GPS data string
   setTime(Hour, Minute, Second, Day, Month, Year);  // set the time of the microcontroller to the UTC time from the GPS
+}
 
-  utc = now();  // read the time in the correct format to change via the TimeChangeRules
-
-  // Change these two rules corresponding to your timezone, see https://github.com/JChristensen/Timezone
-  //Central European Time (Frankfurt, Paris)  120 = 2 hours in daylight saving time (summer).
-  TimeChangeRule CEST = {"CEST", Last, Sun, Mar, 2, 120};
-  //Central European Time (Frankfurt, Paris)  60  = 1 hour in normal time (winter)
-  TimeChangeRule CET = {"CET ", Last, Sun, Oct, 3, 60};
-  Timezone CE(CEST, CET);
-  local = CE.toLocal(utc);
-
+void displaythetime(void)
+{
   lcd.clear();
   lcd.setCursor(0, 0); //Start at character 0 on line 0
   lcd.print("S:");
@@ -94,20 +128,4 @@ void loop()
   if (second(local) < 10) // add a zero if minute is under 10
     lcd.print("0");
   lcd.print(second(local));
-  smartDelay(1000);     // display the time every second
-}
-
-
-static void smartDelay(unsigned long ms)
-{
-  unsigned long start = millis();
-  do
-  {
-    // If data has come in from the GPS module
-    while (GPS_serial.available())
-      gps.encode(GPS_serial.read()); // Send it to the encode function
-    // tinyGPS.encode(char) continues to "load" the tinGPS object with new
-    // data coming in from the GPS module. As full NMEA strings begin to come in
-    // the tinyGPS library will be able to start parsing them for pertinent info
-   } while (millis() - start < ms);
 }
