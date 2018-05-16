@@ -17,15 +17,14 @@ AltSoftSerial GPS_serial;  // RX = 8 (to TX op GPS) , TX = 9 (to RX of GPS) PWM 
 TinyGPSPlus gps;
 
 // Change these two rules corresponding to your timezone, see https://github.com/JChristensen/Timezone
-//Central European Time (Frankfurt, Paris)  120 = 2 hours in daylight saving time (summer).
+//Central European Time (Frankfurt, Paris)  120 = +2 hours in daylight saving time (summer).
 TimeChangeRule CEST = {"CEST", Last, Sun, Mar, 2, 120};
-//Central European Time (Frankfurt, Paris)  60  = 1 hour in normal time (winter)
+//Central European Time (Frankfurt, Paris)  60  = +1 hour in normal time (winter)
 TimeChangeRule CET = {"CET ", Last, Sun, Oct, 3, 60};
 Timezone CE(CEST, CET);
 
 // time variables
 time_t local, utc, prev_set;
-boolean timenotset = true;
 int timesetinterval = 60; //set microcontroller time every 60 seconds
 
 void setup() {
@@ -43,22 +42,21 @@ void setup() {
   {
     smartDelay(1000);
   }
+  setthetime();
+  prev_set = now();
 }
 
 void loop()
 {
-  if (now() - prev_set > timesetinterval || timenotset)
+  if (now() - prev_set > timesetinterval && gps.satellites.value() != 0)  // set the microcontroller time every interval, only if there is a current GPS fix
   {
     setthetime();
     prev_set = now();
-    timenotset = false;
     lcd.clear();
     lcd.setCursor(0, 0); //Start at character 0 on line 0
     lcd.print("time is set");
     delay(1000);
   }
-  utc = now();  // read the time in the correct format to change via the TimeChangeRules
-  local = CE.toLocal(utc);
   displaythetime();
   smartDelay(1000);     // update the time every second
 }
@@ -88,9 +86,10 @@ void setthetime(void)
   // Set Time from GPS data string
   setTime(Hour, Minute, Second, Day, Month, Year);  // set the time of the microcontroller to the UTC time from the GPS
 }
-
 void displaythetime(void)
 {
+  utc = now();  // read the time in the correct format to change via the TimeChangeRules
+  local = CE.toLocal(utc);
   lcd.clear();
   lcd.setCursor(0, 0); //Start at character 0 on line 0
   lcd.print("S:");
