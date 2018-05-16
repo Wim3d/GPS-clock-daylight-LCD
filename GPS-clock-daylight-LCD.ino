@@ -55,7 +55,7 @@ void loop()
     lcd.clear();
     lcd.setCursor(0, 0); //Start at character 0 on line 0
     lcd.print("time is set");
-    delay(1000);
+    smartDelay(1000);
   }
   displaythetime();
   smartDelay(1000);     // update the time every second
