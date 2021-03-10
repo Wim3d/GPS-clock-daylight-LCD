@@ -35,10 +35,10 @@ void setup() {
   lcd.setCursor(0, 0); //Start at character 0 on line 0
   lcd.print("Waiting for");
   lcd.setCursor(0, 1);
-  lcd.print("GPS fix");
+  lcd.print("GPS time");
   GPS_serial.begin(9600); //This opens up communications to the GPS
   smartDelay(1000);
-  while (gps.satellites.value() == 0) // wait for a GPS fix to know the UTC time
+  while (!gps.time.isValid()) // wait for a GPS fix to know the UTC time
   {
     smartDelay(1000);
   }
@@ -48,7 +48,7 @@ void setup() {
 
 void loop()
 {
-  if (now() - prev_set > timesetinterval && gps.satellites.value() != 0)  // set the microcontroller time every interval, only if there is a current GPS fix
+  if (now() - prev_set > timesetinterval && gps.time.isValid())  // set the microcontroller time every interval, only if there is a valid GPS time
   {
     setthetime();
     prev_set = now();
