@@ -38,7 +38,7 @@ void setup() {
   lcd.print("GPS time");
   GPS_serial.begin(9600); //This opens up communications to the GPS
   smartDelay(1000);
-  while (!gps.time.isValid()) // wait for a GPS fix to know the UTC time
+  while (!gps.time.isValid()) // wait a valid GPS UTC time (valid is defined in the TinyGPS++ library)
   {
     smartDelay(1000);
   }
